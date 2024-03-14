@@ -16,7 +16,7 @@ from .context import ContextOptions, ContextOptions, ContextOptionsGroup
 from .motion_module_ad import AnimateDiffModel, AnimateDiffFormat, has_mid_block, normalize_ad_state_dict
 from .logger import logger
 from .utils_motion import ADKeyframe, ADKeyframeGroup, MotionCompatibilityError, get_combined_multival, normalize_min_max
-from .motion_lora import MotionLoraInfo, MotionLoraList
+from .motion_lora import MotionLoraInfo, MotionLoraList, MotionLoraInfoHf
 from .utils_model import get_motion_lora_path, get_motion_model_path, get_sd_model_type
 from .sample_settings import SampleSettings, SeedNoiseGeneration
 
@@ -304,8 +304,11 @@ def get_vanilla_model_patcher(m: ModelPatcher) -> ModelPatcher:
 def load_motion_lora_as_patches(motion_model: MotionModelPatcher, lora: MotionLoraInfo) -> None:
     def get_version(has_midblock: bool):
         return "v2" if has_midblock else "v1"
-
-    lora_path = get_motion_lora_path(lora.name)
+    
+    if isinstance(lora, MotionLoraInfoHf):
+        lora_path = lora.load_lora()
+    else:
+        lora_path = get_motion_lora_path(lora.name)
     logger.info(f"Loading motion LoRA {lora.name}")
     state_dict = comfy.utils.load_torch_file(lora_path)
 

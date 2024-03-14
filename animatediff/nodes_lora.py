@@ -6,7 +6,7 @@ import comfy.sd
 
 from .logger import logger
 from .utils_model import get_available_motion_loras, get_motion_lora_path
-from .motion_lora import MotionLoraInfo, MotionLoraList
+from .motion_lora import MotionLoraInfo, MotionLoraList, MotionLoraInfoHf
 
 
 class AnimateDiffLoraLoader:
@@ -37,6 +37,39 @@ class AnimateDiffLoraLoader:
             raise FileNotFoundError(f"Motion lora with name '{lora_name}' not found.")
         # create motion lora info to be loaded in AnimateDiff Loader
         lora_info = MotionLoraInfo(name=lora_name, strength=strength)
+        prev_motion_lora.add_lora(lora_info)
+
+        return (prev_motion_lora,)
+
+class AnimateDiffLoraLoaderFromHf:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "repo_name": ("STRING", {"multiline": False, "default": "lora_name"}),
+                "filename": ("STRING", {"multiline": False, "default": "lora_name"}),
+                "api_token": ("STRING", {"multiline": False, "default": ""}),
+                "strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.001}),
+            },
+            "optional": {
+                "prev_motion_lora": ("MOTION_LORA",),
+            }
+        }
+    
+    RETURN_TYPES = ("MOTION_LORA",)
+    CATEGORY = "Animate Diff 🎭🅐🅓"
+    FUNCTION = "load_motion_lora_from_hf"
+
+    def load_motion_lora_from_hf(self, repo_name, filename, api_token, strength: float, prev_motion_lora: MotionLoraList=None):
+        if prev_motion_lora is None:
+            prev_motion_lora = MotionLoraList()
+        else:
+            prev_motion_lora = prev_motion_lora.clone()
+        # check if motion lora with name exists
+        # TODO
+
+        # create motion lora info to be loaded in AnimateDiff Loader
+        lora_info = MotionLoraInfoHf(repo_name, filename, api_token, strength=strength)
         prev_motion_lora.add_lora(lora_info)
 
         return (prev_motion_lora,)

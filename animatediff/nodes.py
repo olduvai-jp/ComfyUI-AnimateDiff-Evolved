@@ -14,7 +14,7 @@ from .nodes_context import (LegacyLoopedUniformContextOptionsNode, LoopedUniform
 from .nodes_ad_settings import AnimateDiffSettingsNode, ManualAdjustPENode, SweetspotStretchPENode, FullStretchPENode
 from .nodes_extras import AnimateDiffUnload, EmptyLatentImageLarge, CheckpointLoaderSimpleWithNoiseSelect
 from .nodes_deprecated import AnimateDiffLoader_Deprecated, AnimateDiffLoaderAdvanced_Deprecated, AnimateDiffCombine_Deprecated
-from .nodes_lora import AnimateDiffLoraLoader, MaskedLoraLoader
+from .nodes_lora import AnimateDiffLoraLoader, MaskedLoraLoader, AnimateDiffLoraLoaderFromHf
 
 from .logger import logger
 
@@ -26,6 +26,7 @@ comfy_sample.sample_custom = motion_sample_factory(comfy_sample.sample_custom, i
 NODE_CLASS_MAPPINGS = {
     # Unencapsulated
     "ADE_AnimateDiffLoRALoader": AnimateDiffLoraLoader,
+    "ADE_AnimateDiffLoraLoaderFromHf": AnimateDiffLoraLoaderFromHf,
     "ADE_AnimateDiffSamplingSettings": SampleSettingsNode,
     "ADE_AnimateDiffKeyframe": ADKeyframeNode,
     # Multival Nodes
@@ -88,6 +89,7 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     # Unencapsulated
     "ADE_AnimateDiffLoRALoader": "Load AnimateDiff LoRA 🎭🅐🅓",
+    "ADE_AnimateDiffLoraLoaderFromHf": "Load AnimateDiff LoRA from HuggingFace 🎭🅐🅓",
     "ADE_AnimateDiffSamplingSettings": "Sample Settings 🎭🅐🅓",
     "ADE_AnimateDiffKeyframe": "AnimateDiff Keyframe 🎭🅐🅓",
     # Multival Nodes
