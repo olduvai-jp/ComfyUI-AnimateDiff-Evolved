@@ -239,6 +239,7 @@ class Folders:
     ANIMATEDIFF_MODELS = "animatediff_models"
     MOTION_LORA = "animatediff_motion_lora"
     VIDEO_FORMATS = "animatediff_video_formats"
+    HF_CACHE_DIR = "hf_cache_dir"
 
 
 def add_extension_to_folder_path(folder_name: str, extensions: Union[str, list[str]]):
@@ -273,6 +274,10 @@ try_mkdir(str(Path(folder_paths.models_dir) / Folders.MOTION_LORA))
 folder_paths.add_model_folder_path(Folders.VIDEO_FORMATS, str(Path(__file__).parent.parent / "video_formats"))
 add_extension_to_folder_path(Folders.VIDEO_FORMATS, ".json")
 
+# register HF cache folder
+folder_paths.add_model_folder_path(Folders.HF_CACHE_DIR, str(Path(folder_paths.models_dir) / Folders.HF_CACHE_DIR))
+add_extension_to_folder_path(Folders.HF_CACHE_DIR, folder_paths.supported_pt_extensions)
+try_mkdir(str(Path(folder_paths.models_dir) / Folders.HF_CACHE_DIR))
 
 def get_available_motion_models():
     return folder_paths.get_filename_list(Folders.ANIMATEDIFF_MODELS)

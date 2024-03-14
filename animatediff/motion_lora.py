@@ -1,4 +1,6 @@
 from huggingface_hub import hf_hub_download
+import folder_paths
+from .utils_model import Folders
 
 class MotionLoraInfo:
     def __init__(self, name: str, strength: float = 1.0, hash: str=""):
@@ -24,7 +26,13 @@ class MotionLoraInfoHf(MotionLoraInfo):
         return MotionLoraInfoHf(self.name, self.strength, self.hash)
     
     def load_lora(self):
-        lora_path = hf_hub_download(repo_id=self.repo_name, filename=self.filename, token=self.api_token)
+        cache_dirs = folder_paths.get_folder_paths(Folders.HF_CACHE_DIR)
+        lora_path = hf_hub_download(
+            repo_id=self.repo_name, 
+            filename=self.filename, 
+            token=self.api_token,
+            cache_dir=cache_dirs[0]
+        )
         return lora_path
 
 class MotionLoraList:
