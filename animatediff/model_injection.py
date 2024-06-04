@@ -42,7 +42,8 @@ class ModelPatcherAndInjector(ModelPatcher):
 
         self.object_patches = m.object_patches.copy()
         self.model_options = copy.deepcopy(m.model_options)
-        self.model_keys = m.model_keys
+        if hasattr(m, "model_keys"):
+            self.model_keys = m.model_keys
         if hasattr(m, "backup"):
             self.backup = m.backup
         if hasattr(m, "object_patches_backup"):
@@ -141,7 +142,8 @@ class ModelPatcherAndInjector(ModelPatcher):
         current_hooked_patches: dict[str,list] = self.hooked_patches.get(lora_hook.hook_ref, {})
         p = set()
         for key in patches:
-            if key in self.model_keys:
+            model_sd = self.model.state_dict()
+            if key in model_sd:
                 p.add(key)
                 current_patches: list[tuple] = current_hooked_patches.get(key, [])
                 current_patches.append((strength_patch, patches[key], strength_model))
@@ -159,7 +161,8 @@ class ModelPatcherAndInjector(ModelPatcher):
         current_hooked_patches: dict[str,list] = self.hooked_patches.get(lora_hook.hook_ref, {})
         p = set()
         for key in patches:
-            if key in self.model_keys:
+            model_sd = self.model.state_dict()
+            if key in model_sd:
                 p.add(key)
                 current_patches: list[tuple] = current_hooked_patches.get(key, [])
                 # take difference between desired weight and existing weight to get diff
@@ -423,7 +426,8 @@ class ModelPatcherCLIPHooks(ModelPatcher):
 
         self.object_patches = m.object_patches.copy()
         self.model_options = copy.deepcopy(m.model_options)
-        self.model_keys = m.model_keys
+        if hasattr(m, "model_keys"):
+            self.model_keys = m.model_keys
         if hasattr(m, "backup"):
             self.backup = m.backup
         if hasattr(m, "object_patches_backup"):
@@ -484,7 +488,8 @@ class ModelPatcherCLIPHooks(ModelPatcher):
         current_hooked_patches: dict[str,list] = self.hooked_patches.get(lora_hook, {})
         p = set()
         for key in patches:
-            if key in self.model_keys:
+            model_sd = self.model.state_dict()
+            if key in model_sd:
                 p.add(key)
                 current_patches: list[tuple] = current_hooked_patches.get(key, [])
                 current_patches.append((strength_patch, patches[key], strength_model))
@@ -501,7 +506,8 @@ class ModelPatcherCLIPHooks(ModelPatcher):
         current_hooked_patches: dict[str,list] = self.hooked_patches.get(lora_hook, {})
         p = set()
         for key in patches:
-            if key in self.model_keys:
+            model_sd = self.model.state_dict()
+            if key in model_sd:
                 p.add(key)
                 current_patches: list[tuple] = current_hooked_patches.get(key, [])
                 # take difference between desired weight and existing weight to get diff
@@ -627,7 +633,7 @@ def load_model_as_hooked_lora_for_models(model: Union[ModelPatcher, ModelPatcher
     if model is not None and model_loaded is not None:
         new_modelpatcher = ModelPatcherAndInjector.create_from(model)
         comfy.model_management.unload_model_clones(new_modelpatcher)
-        expected_model_keys = model_loaded.model_keys.copy()
+        expected_model_keys = set(model_loaded.model.state_dict().keys())
         patches_model: dict[str, Tensor] = model_loaded.model.state_dict()
         # do not include ANY model_sampling components of the model that should act as a patch
         for key in list(patches_model.keys()):
@@ -642,7 +648,7 @@ def load_model_as_hooked_lora_for_models(model: Union[ModelPatcher, ModelPatcher
     if clip is not None and clip_loaded is not None:
         new_clip = CLIPWithHooks(clip)
         comfy.model_management.unload_model_clones(new_clip.patcher)
-        expected_clip_keys = clip_loaded.patcher.model_keys.copy()
+        expected_clip_keys = clip_loaded.patcher.model.state_dict().copy()
         patches_clip: dict[str, Tensor] = clip_loaded.cond_stage_model.state_dict()
         k1 = new_clip.add_hooked_patches_as_diffs(lora_hook=lora_hook, patches=patches_clip, strength_patch=strength_clip)
     else:
@@ -702,11 +708,26 @@ class MotionModelPatcher(ModelPatcher):
         self.was_within_range = False
         self.prev_sub_idxs = None
         self.prev_batched_number = None
+    
+    def patch_model_lowvram(self, device_to=None, lowvram_model_memory=0, force_patch_weights=False, *args, **kwargs):
+        patched_model = super().patch_model_lowvram(device_to, lowvram_model_memory, force_patch_weights, *args, **kwargs)
 
-    def patch_model(self, *args, **kwargs):
-        # patch as normal; used to need to do prepare_weights call to work with lowvram, but no longer needed
-        # will consider removing this override at some point since it does nothing at the moment
-        patched_model = super().patch_model(*args, **kwargs)
+        # figure out the tensors (likely pe's) that should be cast to device besides just the named_modules
+        remaining_tensors = list(self.model.state_dict().keys())
+        named_modules = []
+        for n, _ in self.model.named_modules():
+            named_modules.append(n)
+            named_modules.append(f"{n}.weight")
+            named_modules.append(f"{n}.bias")
+        for name in named_modules:
+            if name in remaining_tensors:
+                remaining_tensors.remove(name)
+
+        for key in remaining_tensors:
+            self.patch_weight_to_device(key, device_to)
+            if device_to is not None:
+                comfy.utils.set_attr(self.model, key, comfy.utils.get_attr(self.model, key).to(device_to))
+
         return patched_model
 
     def pre_run(self, model: ModelPatcherAndInjector):
@@ -874,7 +895,8 @@ class MotionModelPatcher(ModelPatcher):
 
         n.object_patches = self.object_patches.copy()
         n.model_options = copy.deepcopy(self.model_options)
-        n.model_keys = self.model_keys
+        if hasattr(n, "model_keys"):
+            n.model_keys = self.model_keys
         if hasattr(n, "backup"):
             self.backup = n.backup
         if hasattr(n, "object_patches_backup"):
@@ -967,7 +989,8 @@ def get_vanilla_model_patcher(m: ModelPatcher) -> ModelPatcher:
 
     model.object_patches = m.object_patches.copy()
     model.model_options = copy.deepcopy(m.model_options)
-    model.model_keys = m.model_keys
+    if hasattr(model, "model_keys"):
+        model.model_keys = m.model_keys
     return model
 
 
